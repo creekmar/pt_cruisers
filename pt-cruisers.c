@@ -39,13 +39,15 @@ int main(int argc, char * argv[]) {
     
     int row = 0;
     //initialize racers
+    int num_racers = argc-starting_arg;
+    Racer * racers[num_racers];
     for(int i = starting_arg; i < argc, i++) {
         //if a name exceeds the max length exit, otherwise make new racer
         if(strlen(argv[i]) > MAX_NAME_LEN) {
             fprintf(stderr, "Error: racer %s exceeds length limit of %d", argv[i], MAX_NAME_LEN);
             return EXIT_FAILURE;
         }
-        make_racer(argv[i], row);
+        racers[row] = make_racer(argv[i], row);
         row++;
     }
 
@@ -56,4 +58,24 @@ int main(int argc, char * argv[]) {
     int width = getmaxx(stdscr);
     clear();
     init_racer(speed_delay, width);
+    
+    //initialize threads
+    void *retval;
+    pthread_t threads[num_racers];
+    for(int i = 0; i < num_racers; i++) {
+        int rc = pthread_create(&threads[i], NULL, &run, (void *) racers[i]);
+        if(rc) {
+            fprintf(stderr, "ERROR; pthread_create() returned %d\n", rc);
+            exit(EXIT_FAILURE);
+        }
+    }
+    //join threads
+    for(int i = 0; i < num_racers; i++) {
+        pthread_join(threads[i], retval);
+    }
+
+    //free memory
+    for(int i = 0; i < num_racers; i++) {
+        destroy_racer(racers[i]);
+    }
 }
