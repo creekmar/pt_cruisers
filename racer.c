@@ -20,6 +20,7 @@
 #include <unistd.h>
 #include "racer.h"
 
+//initialize variables
 static long delay_limit;
 static int finish_line;
 pthread_mutex_t sharedLock;
@@ -98,6 +99,7 @@ void* run(void *racer) {
         }
         refresh();
 
+        //unlocking thread
         lockResult = pthread_mutex_unlock(&sharedLock);
         if(lockResult) {
             perror("exiting run() function");
