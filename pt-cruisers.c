@@ -50,4 +50,10 @@ int main(int argc, char * argv[]) {
     }
 
     //initialize curses
+    initscr();
+    cbreak();
+    noecho();
+    int width = getmaxx(stdscr);
+    clear();
+    init_racer(speed_delay, width);
 }

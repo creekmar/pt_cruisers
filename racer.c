@@ -10,8 +10,20 @@
 
 #include "racer.h"
 
-void init_racers(long milliseconds, int length) {
+static long delay_limit;
+static int finish_line;
+pthread_mutext_t sharedLock;
 
+//initialize all racers before the start of the race
+void init_racers(long milliseconds, int length) {
+    delay_limit = milliseconds;
+    finish_line = length - MAX_CAR_LEN - 2;
+    srand(30);
+    int rc = pthread_mutex_init(&sharedLock, NULL);
+    if(rc) {
+        fprintf(stderr, "ERROR; pthread_mutex_init() returned %d\n", rc);
+        exit(1);
+    }
 }
 
 //makes a new racer given the name of the racer and the row num
