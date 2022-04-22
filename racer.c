@@ -10,6 +10,8 @@
 
 #define _DEFAULT_SOURCE
 #include <curses.h>
+#include <string.h>
+#include <assert.h>
 #include <stdio.h>
 #include <pthread.h>
 #include <stdlib.h>
@@ -20,11 +22,12 @@
 
 static long delay_limit;
 static int finish_line;
-pthread_mutext_t sharedLock;
+pthread_mutex_t sharedLock;
+void * retval;
 
 //initialize all racers before the start of the race
 void init_racers(long milliseconds, int length) {
-    delay_limit = milliseconds;
+    delay_limit = milliseconds * 1000;
     finish_line = length - MAX_CAR_LEN - 2;
     srand(30);
     int rc = pthread_mutex_init(&sharedLock, NULL);
@@ -39,11 +42,13 @@ Racer * make_racer(char *name, int row) {
     Racer * new_racer = (Racer *) malloc(sizeof(Racer));
     new_racer->row = row;
     new_racer->distance = 0;
-    new_racer->graphic = (char *) malloc(MAX_CAR_LEN);
-    new_racer->graphic = "~0=-------o>";
-    for(int i = 0; i < strlen(name); i++) {
-        new_racer->graphic[i+3] = name[i];
+    new_racer->graphic = (char *) malloc(MAX_CAR_LEN + 1);
+    char tmp[MAX_CAR_LEN + 1] = "";
+    strcpy(tmp, "~0=-------o>");
+    for(size_t i = 0; i < strlen(name); i++) {
+        tmp[i+3] = name[i];
     }
+    strcpy(new_racer->graphic, tmp);
     return new_racer;
 }
 
@@ -57,38 +62,42 @@ void destroy_racer(Racer *racer) {
 void* run(void *racer) {
     assert(racer != NULL);
     //this sleep randomizes the thread operation order
-    usleep(1000L);
+    usleep(1000);
     int lockResult = pthread_mutex_lock(&sharedLock);
     if(lockResult) {
         perror("entering run() function");
-        return lockResult;
+        pthread_exit(retval);
     }
 
-    Racer new_racer = (Racer *) racer;
+    Racer* new_racer = (Racer *) racer;
     bool flat = 0;
 
     //keep racing until finish line or flat tire
-    while(racer->distance < finish_line || flat) {
-        long speed = rand()/delay_limit;
+    while((new_racer->distance < finish_line) && (!flat)) {
+        long speed = rand()%delay_limit;
         
         //get a flat tire
         if(speed < 4) {
-            new_racer->graphic[1] = 'X';
+            char tmp[MAX_CAR_LEN + 1] = "";
+            strcpy(tmp, new_racer->graphic);
+            tmp[1] = 'X';
+            strcpy(new_racer->graphic, tmp);
             flat = 1;
         }
         
         usleep(speed);
-        racer->distance++;
+        new_racer->distance++;
 
         //print out car
-        move(0, 0);
+        move(new_racer->row, 0);
         for(int i = 0; i < new_racer->distance; i++) {
             printw(" ");
         }
         for(int i = 0; i <MAX_CAR_LEN; i++) {
             printw("%c", new_racer->graphic[i]);
         }
-        
+        refresh();
+
         lockResult = pthread_mutex_unlock(&sharedLock);
         if(lockResult) {
             perror("exiting run() function");
@@ -96,5 +105,5 @@ void* run(void *racer) {
         }
     }
     
-    return NULL;
+    pthread_exit(retval);
 }
